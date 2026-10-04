@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Coffee Counter</title>
+  <!-- Když se appka přidá na plochu iPhonu: vlastní ikona, název a celá obrazovka -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Coffee Counter">
+  <meta name="theme-color" content="#fdf8ec">
+  <link rel="apple-touch-icon" href="ikona.png">
+  <link rel="icon" href="ikona.png">
+  <!-- Ručně psaná písma z Google Fonts (umí českou diakritiku) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap&subset=latin-ext" rel="stylesheet">
+  <style>
+    /* Kafové barvy – tady se dají snadno změnit */
+    :root {
+      --papir: #fdf8ec;        /* krémový papír */
+      --cara: #c9dcef;         /* modré čáry čtverečků */
+      --kafe: #6b4226;         /* tmavá hnědá – fixa */
+      --kafe-svetle: #a87c56;  /* světlejší hnědá */
+      --bezova: #e8d3b0;       /* béžová pastelka */
+      --smetana: #f6e7c8;      /* smetanová pastelka */
+      --karamel: #e2b77e;      /* karamelová pastelka */
+      --mlecna: #d9b99b;       /* mléčná káva */
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--kafe);
+      font-family: 'Patrick Hand', cursive;
+      /* Čtverečkovaný papír: dvě mřížky čar přes sebe */
+      background-color: var(--papir);
+      background-image:
+        linear-gradient(var(--cara) 1px, transparent 1px),
+        linear-gradient(90deg, var(--cara) 1px, transparent 1px);
+      background-size: 24px 24px;
+      padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-family: 'Caveat', cursive;
+      font-size: 3rem;
+      margin: 8px 0 0;
+      transform: rotate(-2deg);   /* trochu nakřivo, jako psané rukou */
+    }
+
+    h2 {
+      font-family: 'Caveat', cursive;
+      font-size: 2.4rem;
+      margin: 8px 0 16px;
+    }
+
+    .maskoti { width: 220px; max-width: 60vw; }
+
+    /* Mřížka 2×2 pro tlačítka */
+    .mrizka {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    /* Tlačítko jako nakreslené fixou a vybarvené pastelkou */
+    .clovek {
+      position: relative;
+      border: none;
+      background: none;
+      padding: 18px 8px 14px;
+      font-family: 'Caveat', cursive;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--kafe);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-height: 160px;
+    }
+    /* Rámeček je zvlášť, aby se dal "rozkřivit" SVG filtrem a text zůstal ostrý */
+    .clovek::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 3px solid var(--kafe);
+      border-radius: 18px 26px 16px 24px;
+      background: var(--barva);
+      filter: url(#rucne);
+      z-index: -1;
+    }
+    .clovek:nth-child(1) { --barva: var(--karamel); transform: rotate(-1.5deg); }
+    .clovek:nth-child(2) { --barva: var(--smetana); transform: rotate(1deg); }
+    .clovek:nth-child(3) { --barva: var(--bezova);  transform: rotate(1.2deg); }
+    .clovek:nth-child(4) { --barva: var(--mlecna);  transform: rotate(-1deg); }
+    .clovek:active { transform: scale(0.95); }
+
+    .oblicej { width: 80px; height: 80px; }
+
+    /* Obrazovky: vždy je vidět jen jedna */
+    .obrazovka { display: none; width: 100%; max-width: 480px; flex-direction: column; align-items: center; }
+    .obrazovka.aktivni { display: flex; }
+
+    /* Obecné nakreslené tlačítko (stejný trik s rámečkem jako u .clovek) */
+    .tlacitko {
+      position: relative;
+      border: none;
+      background: none;
+      font-family: 'Caveat', cursive;
+      font-weight: 700;
+      font-size: 2rem;
+      color: var(--kafe);
+      cursor: pointer;
+      padding: 14px 10px;
+      min-height: 64px;
+    }
+    .tlacitko::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 3px solid var(--kafe);
+      border-radius: 20px 14px 22px 16px;
+      background: var(--barva, var(--smetana));
+      filter: url(#rucne);
+      z-index: -1;
+    }
+    .tlacitko:active { transform: scale(0.95); }
+
+    .velke { width: 100%; font-size: 2.4rem; min-height: 110px; margin-bottom: 18px; }
+    .velke:nth-of-type(1) { --barva: var(--karamel); transform: rotate(-1deg); }
+    .velke:nth-of-type(2) { --barva: var(--bezova);  transform: rotate(0.8deg); }
+    .velke.rodic { --barva: var(--karamel); transform: rotate(-1deg); }
+
+    .odkaz {
+      background: none; border: none; color: var(--kafe-svetle);
+      font-family: 'Patrick Hand', cursive; font-size: 1.3rem;
+      text-decoration: underline; cursor: pointer; margin-top: 8px;
+    }
+
+    /* Výběr gramů */
+    .predvolby { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: 100%; }
+    .predvolby .tlacitko.vybrano { --barva: var(--karamel); }
+    .plus-minus { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 22px 0; }
+    .plus-minus .tlacitko { width: 80px; height: 80px; font-size: 3rem; --barva: var(--bezova); }
+    .gramy { font-family: 'Caveat', cursive; font-size: 4.5rem; font-weight: 700; min-width: 150px; text-align: center; }
+    .zapsat { --barva: var(--karamel); width: 100%; font-size: 2.4rem; min-height: 90px; }
+
+    /* Nákup zrn: políčka jako nakreslená v sešitu */
+    .policko { width: 100%; margin-bottom: 18px; }
+    .policko label { display: block; font-size: 1.6rem; margin-bottom: 4px; }
+    .policko .radek { display: flex; align-items: center; gap: 10px; }
+    .policko input {
+      flex: 1;
+      min-width: 0;
+      font-family: 'Caveat', cursive;
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--kafe);
+      text-align: center;
+      background: #fff;
+      border: 3px solid var(--kafe);
+      border-radius: 16px 22px 14px 20px;
+      padding: 4px 10px;
+    }
+    .policko .jednotka { font-family: 'Caveat', cursive; font-size: 2.4rem; font-weight: 700; width: 50px; }
+    .za-gram { font-size: 1.6rem; min-height: 1.6em; margin: 0 0 18px; text-align: center; }
+    /* Upozornění, když chybí políčko: červená pastelka */
+    .za-gram.chyba { color: #c0392b; font-weight: bold; }
+    .policko input.chybi { border-color: #c0392b; background: #fde8e4; }
+
+    /* Obrazovka Měsíc */
+    .tlacitko.mensi { width: 100%; font-size: 1.9rem; min-height: 70px; margin-bottom: 14px; --barva: var(--smetana); transform: rotate(0.5deg); }
+    .castka-ramecek {
+      position: relative; width: 100%; text-align: center; padding: 14px 10px; margin-bottom: 14px;
+    }
+    .castka-ramecek::before {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      border: 3px solid var(--kafe); border-radius: 22px 16px 24px 14px;
+      background: var(--karamel); filter: url(#rucne);
+    }
+    .castka-popis { font-size: 1.5rem; }
+    .castka { font-family: 'Caveat', cursive; font-size: 4.2rem; font-weight: 700; line-height: 1.1; }
+    .spolu { font-family: 'Caveat', cursive; font-size: 2.2rem; font-weight: 700; margin: 4px 0 0; text-align: center; }
+    .kazdy { font-size: 1.4rem; margin: 0 0 14px; text-align: center; }
+    .seznam { list-style: none; padding: 0; margin: 0; width: 100%; }
+    .seznam li {
+      display: flex; justify-content: space-between; gap: 10px;
+      font-size: 1.35rem; padding: 8px 4px;
+      border-bottom: 2px dashed var(--kafe-svetle);
+    }
+    .seznam .cena { font-weight: bold; white-space: nowrap; align-self: center; }
+    .seznam .kdy { display: block; font-size: 1.1rem; color: var(--kafe-svetle); }
+    /* Štítek se jménem toho, kdo kafe udělal – barva jako jeho tlačítko na „Kdo jsi?“ */
+    .stitek {
+      display: inline-block; font-family: 'Caveat', cursive; font-weight: 700; font-size: 1.6rem;
+      padding: 0 10px; border: 2px solid var(--kafe); border-radius: 12px 8px 14px 9px;
+      background: var(--barva, var(--smetana)); transform: rotate(-2deg); margin-right: 4px;
+    }
+    .stitek.Erik  { --barva: var(--karamel); }
+    .stitek.Tobík { --barva: var(--smetana); }
+    .stitek.táta  { --barva: var(--bezova); }
+    .stitek.máma  { --barva: var(--mlecna); }
+
+    /* Ceník: kartičky */
+    .karticka { position: relative; width: 100%; padding: 14px 16px; margin-bottom: 18px; }
+    .karticka::before {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      border: 3px solid var(--kafe); border-radius: 18px 24px 16px 22px;
+      background: var(--barva, var(--smetana)); filter: url(#rucne);
+    }
+    .karticka.sluzba { --barva: var(--karamel); transform: rotate(-0.8deg); }
+    .karticka.zrna { --barva: var(--bezova); transform: rotate(0.6deg); }
+    .karticka .nazev { font-size: 1.5rem; }
+    .karticka .radek { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .karticka .cena-velka { font-family: 'Caveat', cursive; font-size: 3.4rem; font-weight: 700; }
+    .karticka .pozn { font-size: 1.15rem; color: var(--kafe); opacity: 0.8; }
+    .karticka .tlacitko { font-size: 1.6rem; min-height: 54px; padding: 6px 14px; --barva: var(--smetana); }
+    .karticka input {
+      width: 120px; font-family: 'Caveat', cursive; font-size: 2.6rem; font-weight: 700; color: var(--kafe);
+      text-align: center; background: #fff; border: 3px solid var(--kafe); border-radius: 14px 18px 12px 16px;
+    }
+
+    /* „Nosím data“ – jemně pulzuje; při chybě červeně */
+    .nacitani { animation: pulz 1s ease-in-out infinite alternate; }
+    .nacitani.chyba { animation: none; color: #c0392b; font-weight: bold; }
+    @keyframes pulz { from { opacity: 0.4; } to { opacity: 1; } }
+
+    /* Měsíc: šipky na přepínání měsíců */
+    .mesic-nav { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; }
+    .tlacitko.sipka { width: 56px; height: 56px; min-height: 0; padding: 0; font-size: 2.2rem; --barva: var(--smetana); }
+    .tlacitko:disabled { opacity: 0.5; }
+    .napoveda { font-size: 1.1rem; color: var(--kafe-svetle); text-align: center; margin: 0 0 6px; }
+    .seznam li.lze-upravit { cursor: pointer; }
+    /* Panel pro opravu řádku */
+    .seznam li.uprava { display: block; background: #fff; border: 2px solid var(--kafe); border-radius: 14px; margin: 6px 0; padding: 10px; }
+    .uprava .radek { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .uprava input {
+      width: 90px; font-family: 'Caveat', cursive; font-size: 2.2rem; font-weight: 700; color: var(--kafe);
+      text-align: center; border: 3px solid var(--kafe); border-radius: 12px; background: var(--papir);
+    }
+    .uprava .tlacitko { font-size: 1.5rem; min-height: 50px; padding: 4px 14px; }
+    .uprava .smazat { --barva: #f6d5cf; }
+    .uprava p { text-align: center; font-size: 1.2rem; margin: 6px 0 0; }
+    .uprava p.chyba, .uzaverka p.chyba { color: #c0392b; font-weight: bold; }
+    /* Uzávěrka měsíce */
+    .uzaverka { width: 100%; text-align: center; font-size: 1.4rem; margin: 0 0 12px; }
+    .uzaverka .tlacitko { width: 100%; font-size: 1.8rem; min-height: 64px; margin-top: 6px; --barva: var(--bezova); }
+
+    /* Animace po zapsání */
+    /* Na obrazovce Zapsáno už maskoti nahoře nejsou, kreslí se dole */
+    body:has(#obrazovka-zapsano.aktivni) .maskoti,
+    body:has(#obrazovka-mesic.aktivni) .maskoti { display: none; }
+    .maskot-kalendar { width: 200px; max-width: 55vw; }
+
+    .zapsano-maskoti { width: 260px; max-width: 70vw; }
+    #srdicko { animation: vylet 1.6s ease-out infinite; transform-origin: center; }
+    @keyframes vylet {
+      0%   { transform: translateY(0) scale(0.4); opacity: 0; }
+      30%  { opacity: 1; }
+      100% { transform: translateY(-45px) scale(1.1); opacity: 0; }
+    }
+    #tuzka { animation: piseme 0.5s ease-in-out infinite alternate; }
+    @keyframes piseme { from { transform: translate(0, 0); } to { transform: translate(8px, 3px); } }
+
+    .vzkaz {
+      margin-top: 22px;
+      font-size: 1.6rem;
+      min-height: 2em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SVG filtr, který dělá čáry nerovné, jako tažené rukou -->
+  <svg width="0" height="0" style="position:absolute">
+    <filter id="rucne">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="3"/>
+      <feDisplacementMap in="SourceGraphic" scale="5"/>
+    </filter>
+  </svg>
+
+  <h1>Coffee Counter</h1>
+
+  <!-- Maskoti: zrníčko kuchař a jeho kamarád hrníček -->
+  <svg class="maskoti" viewBox="0 0 240 150" fill="none" stroke="#6b4226" stroke-width="3" stroke-linecap="round" filter="url(#rucne)">
+    <!-- Zrníčko -->
+    <ellipse cx="70" cy="80" rx="34" ry="44" fill="#a87c56" transform="rotate(-12 70 80)"/>
+    <path d="M62 40 Q78 80 66 122"/>                          <!-- rýha uprostřed zrnka -->
+    <rect x="50" y="22" width="34" height="16" rx="4" fill="#fff"/> <!-- kuchařská čepice -->
+    <circle cx="56" cy="20" r="9" fill="#fff"/><circle cx="68" cy="14" r="10" fill="#fff"/><circle cx="80" cy="20" r="9" fill="#fff"/>
+    <circle cx="54" cy="72" r="3" fill="#6b4226"/><circle cx="80" cy="68" r="3" fill="#6b4226"/> <!-- oči -->
+    <path d="M58 88 Q68 96 80 84"/>                           <!-- úsměv -->
+    <path d="M38 84 L18 62"/><path d="M102 76 L124 84"/>       <!-- ruce: jedna mává, druhá k hrníčku -->
+    <path d="M58 122 L52 142 L42 142"/><path d="M80 120 L86 142 L96 142"/> <!-- nohy -->
+    <!-- Hrníček -->
+    <path d="M132 70 L140 136 Q160 144 180 136 L188 70 Z" fill="#f6e7c8"/>
+    <ellipse cx="160" cy="70" rx="28" ry="7" fill="#6b4226"/>  <!-- kafe uvnitř -->
+    <path d="M188 84 Q210 88 204 106 Q200 118 184 116"/>       <!-- ucho -->
+    <circle cx="152" cy="98" r="3" fill="#6b4226"/><circle cx="170" cy="98" r="3" fill="#6b4226"/>
+    <path d="M152 110 Q161 118 170 110"/>
+    <path d="M150 56 Q144 46 152 38 Q160 30 154 20"/>          <!-- pára -->
+    <path d="M168 56 Q162 46 170 38 Q178 30 172 20"/>
+  </svg>
+
+  <!-- ===== Obrazovka 1: Kdo jsi? ===== -->
+  <section class="obrazovka aktivni" id="obrazovka-kdo">
+  <h2>Kdo jsi?</h2>
+
+  <!-- Čtyři velká tlačítka. Data-osloveni je jméno v 5. pádu (Ahoj, Eriku!) -->
+  <div class="mrizka">
+    <button class="clovek" data-osloveni="Eriku">
+      <svg class="oblicej" viewBox="0 0 80 80" fill="#fff8ec" stroke="#6b4226" stroke-width="3" stroke-linecap="round">
+        <circle cx="40" cy="42" r="28"/>
+        <path d="M18 30 Q24 10 40 12 Q58 12 62 30 Q50 22 40 24 Q28 22 18 30Z" fill="#6b4226"/>
+        <circle cx="31" cy="40" r="2.5" fill="#6b4226"/><circle cx="49" cy="40" r="2.5" fill="#6b4226"/>
+        <path d="M30 52 Q40 60 50 52" fill="none"/>
+      </svg>
+      Erik
+    </button>
+    <button class="clovek" data-osloveni="Tobíku">
+      <svg class="oblicej" viewBox="0 0 80 80" fill="#fff8ec" stroke="#6b4226" stroke-width="3" stroke-linecap="round">
+        <circle cx="40" cy="42" r="28"/>
+        <path d="M16 34 L22 14 L30 24 L40 10 L50 24 L58 14 L64 34 Q40 22 16 34Z" fill="#a87c56"/>
+        <circle cx="31" cy="42" r="2.5" fill="#6b4226"/><circle cx="49" cy="42" r="2.5" fill="#6b4226"/>
+        <path d="M30 52 Q40 62 50 52" fill="none"/>
+      </svg>
+      Tobík
+    </button>
+    <button class="clovek" data-osloveni="tati">
+      <svg class="oblicej" viewBox="0 0 80 80" fill="#fff8ec" stroke="#6b4226" stroke-width="3" stroke-linecap="round">
+        <circle cx="40" cy="42" r="28"/>
+        <path d="M14 34 Q18 14 40 14 Q62 14 66 34 Q40 26 14 34Z" fill="#6b4226"/>
+        <circle cx="31" cy="40" r="2.5" fill="#6b4226"/><circle cx="49" cy="40" r="2.5" fill="#6b4226"/>
+        <path d="M28 50 Q40 46 52 50" fill="none" stroke-width="4"/> <!-- knír -->
+        <path d="M32 58 Q40 62 48 58" fill="none"/>
+      </svg>
+      táta
+    </button>
+    <button class="clovek" data-osloveni="mami">
+      <svg class="oblicej" viewBox="0 0 80 80" fill="#fff8ec" stroke="#6b4226" stroke-width="3" stroke-linecap="round">
+        <path d="M12 44 Q10 10 40 10 Q70 10 68 44 L70 70 L56 66 L24 66 L10 70Z" fill="#e2b77e"/>
+        <circle cx="40" cy="42" r="24"/>
+        <path d="M18 34 Q30 16 50 20 Q60 24 62 34 Q46 26 18 34Z" fill="#e2b77e"/>
+        <circle cx="32" cy="42" r="2.5" fill="#6b4226"/><circle cx="48" cy="42" r="2.5" fill="#6b4226"/>
+        <path d="M32 52 Q40 58 48 52" fill="none"/>
+      </svg>
+      máma
+    </button>
+  </div>
+
+  <p class="vzkaz" id="vzkaz"></p>
+  </section>
+
+  <!-- ===== Obrazovka 2: Hlavní (pro kluky) ===== -->
+  <section class="obrazovka" id="obrazovka-hlavni">
+    <h2 id="pozdrav">Ahoj!</h2>
+    <!-- Tlačítka pro kluky -->
+    <button class="tlacitko velke kluk" id="tl-uvaril">☕ Uvařil jsem kafe</button>
+    <button class="tlacitko velke kluk" id="tl-zrna">🫘 Koupili jsme zrna</button>
+    <!-- Tlačítko pro rodiče (text se mění: táta „Udělal jsem si…“, máma „Udělala jsem si…“) -->
+    <button class="tlacitko velke rodic" id="tl-sam">☕ Udělal jsem si kafe sám</button>
+    <p class="vzkaz" id="vzkaz-hlavni"></p>
+    <!-- Ceník vidí jen rodiče -->
+    <button class="tlacitko mensi rodic" id="tl-cenik">💰 Ceník</button>
+    <!-- Měsíc vidí všichni -->
+    <button class="tlacitko mensi" id="tl-mesic">📅 Měsíc</button>
+    <button class="odkaz" id="tl-nejsem">nejsem to já</button>
+  </section>
+
+  <!-- ===== Obrazovka 3: Kolik gramů? ===== -->
+  <section class="obrazovka" id="obrazovka-gramy">
+    <h2>Kolik gramů?</h2>
+    <div class="predvolby">
+      <button class="tlacitko" data-gramy="24">24 g</button>
+      <button class="tlacitko" data-gramy="30">30 g</button>
+      <button class="tlacitko" data-gramy="45">45 g</button>
+    </div>
+    <div class="plus-minus">
+      <button class="tlacitko" id="tl-minus">−</button>
+      <div class="gramy"><span id="gramy">30</span> g</div>
+      <button class="tlacitko" id="tl-plus">+</button>
+    </div>
+    <button class="tlacitko zapsat" id="tl-zapsat">Zapsat ✏️</button>
+    <p class="za-gram" id="vzkaz-gramy"></p>
+    <button class="odkaz" data-jdi="obrazovka-hlavni">zpět</button>
+  </section>
+
+  <!-- ===== Obrazovka: Měsíc ===== -->
+  <section class="obrazovka" id="obrazovka-mesic">
+    <!-- Zrníčko drží kalendář -->
+    <svg class="maskot-kalendar" viewBox="0 0 200 150" fill="none" stroke="#6b4226" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#rucne)">
+      <!-- zrníčko (za kalendářem) -->
+      <ellipse cx="70" cy="78" rx="34" ry="44" fill="#a87c56" transform="rotate(-10 70 78)"/>
+      <path d="M63 36 Q78 78 66 120"/>
+      <rect x="52" y="20" width="34" height="14" rx="4" fill="#fff"/>
+      <circle cx="58" cy="18" r="8" fill="#fff"/><circle cx="69" cy="12" r="9" fill="#fff"/><circle cx="80" cy="18" r="8" fill="#fff"/>
+      <circle cx="56" cy="66" r="3" fill="#6b4226"/><circle cx="80" cy="62" r="3" fill="#6b4226"/>
+      <path d="M58 80 Q68 88 80 78"/>
+      <path d="M60 120 L54 140 L44 140"/><path d="M80 118 L86 140 L96 140"/>
+      <path d="M38 80 L22 60"/> <!-- levá ruka mává -->
+      <!-- kalendář v pravé ruce -->
+      <path d="M100 86 L116 92"/>
+      <rect x="114" y="56" width="66" height="70" rx="6" fill="#fff"/>
+      <rect x="114" y="56" width="66" height="18" rx="6" fill="#e2b77e"/>
+      <circle cx="130" cy="54" r="3" fill="#6b4226"/><circle cx="164" cy="54" r="3" fill="#6b4226"/> <!-- kroužky -->
+      <!-- dnešní datum: měsíc nahoře, velké číslo dne, zakroužkované -->
+      <text id="kal-mesic" x="147" y="70" text-anchor="middle" font-family="Caveat, cursive" font-size="15" font-weight="700" fill="#6b4226" stroke="none">ŘÍJEN</text>
+      <text id="kal-den" x="147" y="114" text-anchor="middle" font-family="Caveat, cursive" font-size="38" font-weight="700" fill="#6b4226" stroke="none">4</text>
+      <ellipse cx="147" cy="102" rx="22" ry="19" stroke="#c0392b"/>
+    </svg>
+    <div class="mesic-nav">
+      <button class="tlacitko sipka" id="tl-predchozi" aria-label="předchozí měsíc">‹</button>
+      <h2 id="mesic-nazev">Říjen 2026</h2>
+      <button class="tlacitko sipka" id="tl-dalsi" aria-label="další měsíc">›</button>
+    </div>
+    <p class="vzkaz nacitani" id="mesic-nacitani"></p>
+    <div id="mesic-obsah" style="width:100%">
+    <div class="castka-ramecek">
+      <div class="castka-popis">Rodiče zaplatí do pokladny</div>
+      <div class="castka" id="mesic-castka">0 Kč</div>
+    </div>
+    <p class="spolu" id="mesic-spolu"></p>
+    <p class="kazdy" id="mesic-kazdy"></p>
+    <div class="uzaverka" id="mesic-uzaverka"></div>
+    <p class="napoveda" id="mesic-napoveda">Klepni na řádek, když ho chceš opravit nebo smazat.</p>
+    <ul class="seznam" id="mesic-seznam"></ul>
+    </div>
+    <button class="odkaz" data-jdi="obrazovka-hlavni">zpět</button>
+  </section>
+
+  <!-- ===== Obrazovka: Ceník (jen rodiče) ===== -->
+  <section class="obrazovka" id="obrazovka-cenik">
+    <h2>Ceník</h2>
+    <p class="vzkaz nacitani" id="cenik-nacitani"></p>
+    <div class="karticka sluzba">
+      <div class="nazev">Služba kluků (zrna + práce)</div>
+      <!-- Zobrazení ceny -->
+      <div class="radek" id="sluzba-zobrazeni">
+        <span class="cena-velka" id="sluzba-cena">–</span>
+        <button class="tlacitko" id="tl-zmenit">změnit</button>
+      </div>
+      <!-- Úprava ceny (schované, dokud rodič neklepne na „změnit“) -->
+      <div class="radek" id="sluzba-uprava" style="display:none">
+        <span><input id="sluzba-input" type="text" inputmode="decimal"> <span class="cena-velka" style="font-size:2rem">Kč/g</span></span>
+        <button class="tlacitko" id="tl-ulozit">uložit</button>
+      </div>
+      <div class="pozn" id="sluzba-pozn">Nová cena platí od dneška. Starší kafe se nepřepočítají.</div>
+    </div>
+    <div class="karticka zrna">
+      <div class="nazev">Zrna, když si rodič udělá kafe sám</div>
+      <div class="radek"><span class="cena-velka" id="zrna-cena">–</span></div>
+      <div class="pozn" id="zrna-pozn"></div>
+    </div>
+    <button class="odkaz" data-jdi="obrazovka-hlavni">zpět</button>
+  </section>
+
+  <!-- ===== Obrazovka: Koupili jsme zrna ===== -->
+  <section class="obrazovka" id="obrazovka-zrna">
+    <h2>Koupili jsme zrna</h2>
+    <div class="policko">
+      <label for="nakup-gramy">Kolik gramů?</label>
+      <!-- inputmode="numeric" = na telefonu vyskočí klávesnice jen s čísly -->
+      <div class="radek"><input id="nakup-gramy" type="text" inputmode="numeric" placeholder="1000"><span class="jednotka">g</span></div>
+    </div>
+    <div class="policko">
+      <label for="nakup-cena">Kolik to stálo?</label>
+      <div class="radek"><input id="nakup-cena" type="text" inputmode="decimal" placeholder="450"><span class="jednotka">Kč</span></div>
+    </div>
+    <p class="za-gram" id="za-gram"></p>
+    <button class="tlacitko zapsat" id="tl-zapsat-nakup">Zapsat ✏️</button>
+    <button class="odkaz" data-jdi="obrazovka-hlavni">zpět</button>
+  </section>
+
+  <!-- ===== Obrazovka 4: Zapsáno! (zrníčko píše, z hrníčku letí srdíčko) ===== -->
+  <section class="obrazovka" id="obrazovka-zapsano">
+    <svg class="zapsano-maskoti" viewBox="0 0 260 170" fill="none" stroke="#6b4226" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Zrníčko -->
+      <g filter="url(#rucne)">
+        <ellipse cx="62" cy="96" rx="32" ry="42" fill="#a87c56" transform="rotate(-10 62 96)"/>
+        <path d="M55 58 Q70 96 58 136"/>
+        <circle cx="48" cy="86" r="3" fill="#6b4226"/><circle cx="72" cy="82" r="3" fill="#6b4226"/>
+        <path d="M52 102 Q62 108 72 100"/>
+        <path d="M52 136 L48 156 L38 156"/><path d="M72 134 L78 156 L88 156"/>
+        <!-- levá ruka mává, papír leží vedle -->
+        <path d="M32 98 L14 80"/>
+        <rect x="96" y="112" width="46" height="44" fill="#fff" transform="rotate(4 119 134)"/>
+        <path d="M102 124 L134 126 M101 134 L128 136 M100 144 L132 146"/>
+        <!-- pravá ruka drží tužku -->
+        <path d="M90 100 L110 116"/>
+      </g>
+      <!-- tužka (hýbe se, jako by psala) -->
+      <g id="tuzka" filter="url(#rucne)">
+        <path d="M108 132 L104 124 L124 96 L132 102 L112 130 Z" fill="#e2b77e"/>
+      </g>
+      <!-- Hrníček -->
+      <g filter="url(#rucne)">
+        <path d="M160 86 L168 152 Q188 160 208 152 L216 86 Z" fill="#f6e7c8"/>
+        <ellipse cx="188" cy="86" rx="28" ry="7" fill="#6b4226"/>
+        <path d="M216 100 Q238 104 232 122 Q228 134 212 132"/>
+        <circle cx="180" cy="114" r="3" fill="#6b4226"/><circle cx="198" cy="114" r="3" fill="#6b4226"/>
+        <path d="M180 126 Q189 134 198 126"/>
+      </g>
+      <!-- srdíčko letí z hrníčku -->
+      <path id="srdicko" d="M188 74 C168 58 172 36 188 46 C204 36 208 58 188 74 Z" fill="#e88a8a"/>
+    </svg>
+    <h2 id="zapsano-text">Zapsáno!</h2>
+    <button class="tlacitko zapsat" data-jdi="obrazovka-hlavni">Hotovo 👍</button>
+  </section>
+
+  <script>
+    // ============================================================
+    // Coffee Counter – mozek appky
+    // Data jsou v Google Tabulce, appka s ní mluví přes „číšníka“ (Apps Script).
+    // ============================================================
+
+    // ADRESA „ČÍŠNÍKA“ (Apps Scriptu), který mluví s Google Tabulkou.
+    // Táta o ní ví – kdo ji zná, může zapisovat, proto ji nikde nesdílíme.
+    const ADRESA = 'https://script.google.com/macros/s/AKfycby6Nk9lyl5hX19vuNUNsqgEa-zqobcDvDtPCJVPBKKEm2vlPNucAkH1Dc6FYqo3Gk5nsw/exec';
+
+    const NAZVY_MESICU = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
+                          'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+    const KLUCI = ['Erik', 'Tobík'];
+    const RODICE = ['táta', 'máma'];
+
+    let data = null;      // data z Tabulky (vyplní se po načtení)
+    let kdoJsem = null;   // kdo appku právě používá: 'Erik', 'Tobík', 'táta' nebo 'máma'
+    let gramy = 30;       // vybrané gramy na obrazovce „Kolik gramů?“
+    // Který měsíc je vidět v Měsíci (na začátku ten dnešní)
+    let vybranyRok = new Date().getFullYear();
+    let vybranyMesic = new Date().getMonth();   // 0 = leden, 9 = říjen
+
+    // ---------------- Pomocníci ----------------
+
+    // Přepne na obrazovku s daným id (ostatní schová)
+    function ukaz(id) {
+      document.querySelectorAll('.obrazovka').forEach(function (o) {
+        o.classList.toggle('aktivni', o.id === id);
+      });
+      window.scrollTo(0, 0);
+    }
+
+    // Číslo na koruny po česku: 13.5 → "13,50 Kč"
+    function kc(cislo) {
+      return Number(cislo).toFixed(2).replace('.', ',') + ' Kč';
+    }
+    // 1.5 → "1,50 Kč/g"
+    function kcZaGram(cislo) {
+      return Number(cislo).toFixed(2).replace('.', ',') + ' Kč/g';
+    }
+    // Přečte číslo z políčka. Česky se píše desetinná čárka, tak ji změníme na tečku.
+    function cislo(id) {
+      return parseFloat(document.getElementById(id).value.replace(',', '.'));
+    }
+    // Datum → "4. 10." a "7:42"
+    function datumText(d) { return d.getDate() + '. ' + (d.getMonth() + 1) + '.'; }
+    function casText(d) { return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+    // Klíč měsíce, jak ho zná Tabulka: "2026-10"
+    function klicMesice(rok, mesic) {
+      return rok + '-' + String(mesic + 1).padStart(2, '0');
+    }
+    // Hodnota z listu Uzávěrky → klíč (pro jistotu umí i datum)
+    function klicZHodnoty(v) {
+      if (/^\d{4}-\d{2}$/.test(String(v))) return String(v);
+      const d = new Date(v);
+      return klicMesice(d.getFullYear(), d.getMonth());
+    }
+
+    // Vypíše zprávu do odstavce: druh = '' (normální), 'nacitani' nebo 'chyba'
+    function zprava(el, text, druh) {
+      el.textContent = text;
+      el.classList.remove('nacitani', 'chyba');
+      if (druh) el.classList.add(druh);
+    }
+
+    // ---------------- Mluvení s číšníkem ----------------
+
+    // Požádá číšníka o všechna data. Vrací „slib“ (Promise) – data přijdou za chvilku.
+    function nactiData() {
+      return fetch(ADRESA + '?akce=vse')
+        .then(function (odpoved) { return odpoved.json(); })
+        .then(function (json) {
+          if (!json.ok) throw new Error(json.chyba);
+          data = json;
+          return json;
+        });
+    }
+
+    // Pošle číšníkovi objednávku k zápisu, třeba {akce: 'kafe', kdo: 'Erik', gramy: 30}.
+    // Posíláme jako obyčejný text – tak to Google pustí bez zdržování.
+    function posli(objednavka) {
+      objednavka.kdo = kdoJsem;
+      return fetch(ADRESA, { method: 'POST', body: JSON.stringify(objednavka) })
+        .then(function (odpoved) { return odpoved.json(); })
+        .then(function (json) {
+          if (!json.ok) throw new Error(json.chyba);
+          return json.vysledek;
+        });
+    }
+
+    // ---------------- Kdo jsi? ----------------
+
+    // Přihlásí člověka (osloveni = 'Eriku', 'Tobíku', 'tati', 'mami') a ukáže hlavní obrazovku
+    function prihlas(osloveni) {
+      kdoJsem = { 'Eriku': 'Erik', 'Tobíku': 'Tobík', 'tati': 'táta', 'mami': 'máma' }[osloveni];
+      if (!kdoJsem) return;
+      const jeKluk = KLUCI.indexOf(kdoJsem) >= 0;
+      document.getElementById('pozdrav').textContent = 'Ahoj, ' + osloveni + '!';
+      document.getElementById('vzkaz-hlavni').textContent = '';
+      // Klukům ukážeme jejich tlačítka, rodičům jejich
+      document.querySelectorAll('.kluk').forEach(function (t) { t.style.display = jeKluk ? '' : 'none'; });
+      document.querySelectorAll('.rodic').forEach(function (t) { t.style.display = jeKluk ? 'none' : ''; });
+      // Máma: „Udělala jsem si kafe sama“, táta: „Udělal jsem si kafe sám“
+      document.getElementById('tl-sam').textContent =
+        osloveni === 'mami' ? '☕ Udělala jsem si kafe sama' : '☕ Udělal jsem si kafe sám';
+      ukaz('obrazovka-hlavni');
+    }
+
+    document.querySelectorAll('.clovek').forEach(function (tlacitko) {
+      tlacitko.addEventListener('click', function () {
+        // Zapamatujeme si volbu v tomhle zařízení (localStorage = paměť prohlížeče)
+        try { localStorage.setItem('coffee-kdo', tlacitko.dataset.osloveni); } catch (e) {}
+        prihlas(tlacitko.dataset.osloveni);
+      });
+    });
+
+    document.getElementById('tl-nejsem').addEventListener('click', function () {
+      try { localStorage.removeItem('coffee-kdo'); } catch (e) {}
+      kdoJsem = null;
+      ukaz('obrazovka-kdo');
+    });
+
+    // Tlačítka s data-jdi="..." prostě přepnou obrazovku
+    document.querySelectorAll('[data-jdi]').forEach(function (t) {
+      t.addEventListener('click', function () { ukaz(t.dataset.jdi); });
+    });
+
+    // ---------------- Hlavní obrazovka ----------------
+
+    function otevriGramy() {
+      nastavGramy(30);
+      zprava(document.getElementById('vzkaz-gramy'), '');
+      ukaz('obrazovka-gramy');
+    }
+    document.getElementById('tl-uvaril').addEventListener('click', otevriGramy);
+    document.getElementById('tl-sam').addEventListener('click', otevriGramy);   // rodič: stejný výběr gramů
+
+    document.getElementById('tl-zrna').addEventListener('click', function () {
+      document.getElementById('nakup-gramy').value = '';
+      document.getElementById('nakup-cena').value = '';
+      // Nový nákup začíná bez červených políček
+      document.getElementById('nakup-gramy').classList.remove('chybi');
+      document.getElementById('nakup-cena').classList.remove('chybi');
+      spocitejZaGram();
+      ukaz('obrazovka-zrna');
+    });
+
+    // ---------------- Kolik gramů? ----------------
+
+    function nastavGramy(g) {
+      gramy = Math.min(100, Math.max(1, g));   // hlídáme, ať je to mezi 1 a 100 g
+      document.getElementById('gramy').textContent = gramy;
+      // zvýrazníme předvolbu, pokud se trefí
+      document.querySelectorAll('[data-gramy]').forEach(function (t) {
+        t.classList.toggle('vybrano', Number(t.dataset.gramy) === gramy);
+      });
+    }
+    document.querySelectorAll('[data-gramy]').forEach(function (t) {
+      t.addEventListener('click', function () { nastavGramy(Number(t.dataset.gramy)); });
+    });
+    document.getElementById('tl-plus').addEventListener('click', function () { nastavGramy(gramy + 1); });
+    document.getElementById('tl-minus').addEventListener('click', function () { nastavGramy(gramy - 1); });
+
+    // Zapsat kafe: pošleme číšníkovi objednávku a počkáme na odpověď
+    document.getElementById('tl-zapsat').addEventListener('click', function () {
+      const tlacitko = document.getElementById('tl-zapsat');
+      const vzkaz = document.getElementById('vzkaz-gramy');
+      tlacitko.disabled = true;               // ať se kafe nezapíše dvakrát
+      zprava(vzkaz, '✏️ Zapisuju…', 'nacitani');
+      posli({ akce: 'kafe', gramy: gramy })
+        .then(function (vysledek) {
+          document.getElementById('zapsano-text').textContent =
+            'Zapsáno! ' + gramy + ' g = ' + kc(vysledek.kc) + ' ☕';
+          zprava(vzkaz, '');
+          ukaz('obrazovka-zapsano');
+        })
+        .catch(function (chyba) { zprava(vzkaz, '❌ Nezapsáno! ' + chyba.message, 'chyba'); })
+        .finally(function () { tlacitko.disabled = false; });
+    });
+
+    // ---------------- Koupili jsme zrna ----------------
+
+    // Hned jak kluci píšou, ukážeme cenu za 1 gram (cena ÷ gramy)
+    function spocitejZaGram() {
+      const g = cislo('nakup-gramy');
+      const cena = cislo('nakup-cena');
+      const text = document.getElementById('za-gram');
+      // Políčko, které už je vyplněné, přestane být červené
+      if (g > 0) document.getElementById('nakup-gramy').classList.remove('chybi');
+      if (cena > 0) document.getElementById('nakup-cena').classList.remove('chybi');
+      if (g > 0 && cena > 0) {
+        zprava(text, 'To je ' + kcZaGram(cena / g).replace('/g', '') + ' za 1 gram');
+      } else {
+        zprava(text, '');
+      }
+    }
+    document.getElementById('nakup-gramy').addEventListener('input', spocitejZaGram);
+    document.getElementById('nakup-cena').addEventListener('input', spocitejZaGram);
+
+    document.getElementById('tl-zapsat-nakup').addEventListener('click', function () {
+      const g = cislo('nakup-gramy');
+      const cena = cislo('nakup-cena');
+      const text = document.getElementById('za-gram');
+      const tlacitko = document.getElementById('tl-zapsat-nakup');
+      // Zabarvíme políčka, která chybí
+      document.getElementById('nakup-gramy').classList.toggle('chybi', !(g > 0));
+      document.getElementById('nakup-cena').classList.toggle('chybi', !(cena > 0));
+      if (!(g > 0) || !(cena > 0)) {
+        zprava(text, '❌ Není zapsáno! Vyplň červené políčko.', 'chyba');
+        return;
+      }
+      tlacitko.disabled = true;
+      zprava(text, '✏️ Zapisuju…', 'nacitani');
+      posli({ akce: 'nakup', gramy: g, cena: cena })
+        .then(function (vysledek) {
+          document.getElementById('zapsano-text').textContent =
+            'Zapsáno! ' + g + ' g za ' + kc(cena) + ' 🫘';
+          zprava(text, '');
+          ukaz('obrazovka-zapsano');
+        })
+        .catch(function (chyba) { zprava(text, '❌ Nezapsáno! ' + chyba.message, 'chyba'); })
+        .finally(function () { tlacitko.disabled = false; });
+    });
+
+    // ---------------- Měsíc ----------------
+
+    // Najde platnou (nesmazanou) uzávěrku vybraného měsíce, nebo null
+    function uzaverkaMesice() {
+      const klic = klicMesice(vybranyRok, vybranyMesic);
+      let nalezena = null;
+      data.uzaverky.forEach(function (u) {
+        if (u['smazáno'] !== 'ano' && klicZHodnoty(u['měsíc']) === klic) nalezena = u;
+      });
+      return nalezena;
+    }
+
+    function vykresliMesic() {
+      document.getElementById('mesic-nazev').textContent = NAZVY_MESICU[vybranyMesic] + ' ' + vybranyRok;
+      const dnes = new Date();
+      // Do budoucnosti listovat nejde
+      document.getElementById('tl-dalsi').disabled =
+        (vybranyRok > dnes.getFullYear()) || (vybranyRok === dnes.getFullYear() && vybranyMesic >= dnes.getMonth());
+
+      const uzaverka = uzaverkaMesice();
+      const zavreny = uzaverka !== null;
+      const jeRodic = RODICE.indexOf(kdoJsem) >= 0;
+
+      // Záznamy vybraného měsíce, které nejsou smazané
+      const zaznamy = data.zaznamy.filter(function (r) {
+        const kdy = new Date(r['kdy']);
+        return r['smazáno'] !== 'ano' && kdy.getMonth() === vybranyMesic && kdy.getFullYear() === vybranyRok;
+      });
+
+      let celkem = 0, erik = 0, tobik = 0;
+      const seznam = document.getElementById('mesic-seznam');
+      seznam.innerHTML = '';
+      if (zaznamy.length === 0) {
+        seznam.innerHTML = '<li><span>V tomhle měsíci zatím žádné kafe ☕</span></li>';
+      }
+      zaznamy.forEach(function (r) {
+        const kdy = new Date(r['kdy']);
+        const g = Number(r['gramy']);
+        const cena = Number(r['kolik Kč']);
+        celkem = celkem + cena;
+        if (r['kdo'] === 'Erik') erik = erik + 1;
+        if (r['kdo'] === 'Tobík') tobik = tobik + 1;
+        // Text řádku: kluk „uvařil“, máma „si udělala sama“, táta „si udělal sám“
+        let popis = 'uvařil';
+        if (r['kdo'] === 'máma') popis = 'si udělala sama';
+        if (r['kdo'] === 'táta') popis = 'si udělal sám';
+        const li = document.createElement('li');
+        // Nahoře malým písmem datum a čas, pod tím štítek se jménem
+        li.innerHTML =
+          '<span><span class="kdy">' + datumText(kdy) + ' v ' + casText(kdy) + '</span>' +
+          '<span class="stitek ' + r['kdo'] + '">' + r['kdo'] + '</span> ' + popis + ' ' + g + ' g</span>' +
+          '<span class="cena">' + kc(cena) + '</span>';
+        // V otevřeném měsíci jde řádek opravit: klepnutím se pod ním otevře panel
+        if (!zavreny) {
+          li.classList.add('lze-upravit');
+          li.addEventListener('click', function () { otevriUpravu(li, r); });
+        }
+        seznam.appendChild(li);
+      });
+
+      document.getElementById('mesic-castka').textContent = kc(celkem);
+      // Týmová statistika: nejdřív společný výsledek, pod tím každý zvlášť
+      document.getElementById('mesic-spolu').textContent = 'Spolu jste uvařili ' + (erik + tobik) + ' kafe ☕';
+      document.getElementById('mesic-kazdy').textContent = 'Erik ' + erik + ' · Tobík ' + tobik;
+      document.getElementById('mesic-napoveda').style.display = (!zavreny && zaznamy.length > 0) ? '' : 'none';
+
+      // Uzávěrka: zavřený měsíc ukáže zámek, rodič ho může zavřít nebo znovu otevřít
+      const box = document.getElementById('mesic-uzaverka');
+      box.innerHTML = '';
+      if (zavreny) {
+        const kdyZavreno = new Date(uzaverka['kdy']);
+        box.innerHTML = '<div>🔒 Měsíc je uzavřený. Zaplaceno ' + kc(uzaverka['kolik zaplaceno']) +
+          ' (' + uzaverka['kdo'] + ', ' + datumText(kdyZavreno) + ')</div>';
+        if (jeRodic) {
+          const tl = document.createElement('button');
+          tl.className = 'tlacitko';
+          tl.textContent = '🔓 Znovu otevřít';
+          tl.addEventListener('click', function () {
+            if (!confirm('Opravdu znovu otevřít ' + NAZVY_MESICU[vybranyMesic].toLowerCase() + '? Pak v něm půjde zase měnit.')) return;
+            provedAObnov(box, posli({ akce: 'uprav', list: 'Uzávěrky', cislo: uzaverka['číslo'], sloupec: 'smazáno', hodnota: 'ano' }));
+          });
+          box.appendChild(tl);
+        }
+      } else if (jeRodic && zaznamy.length > 0) {
+        const tl = document.createElement('button');
+        tl.className = 'tlacitko';
+        tl.textContent = '🔒 Zaplaceno – uzavřít měsíc';
+        tl.addEventListener('click', function () {
+          if (!confirm('Zaplatili jste ' + kc(celkem) + ' a chcete uzavřít ' + NAZVY_MESICU[vybranyMesic].toLowerCase() + '? Pak v něm nepůjde nic měnit.')) return;
+          provedAObnov(box, posli({ akce: 'uzavri', mesic: klicMesice(vybranyRok, vybranyMesic), zaplaceno: celkem }));
+        });
+        box.appendChild(tl);
+      }
+    }
+
+    // Počká na zápis, pak znovu načte data a překreslí Měsíc. Chybu vypíše do el.
+    function provedAObnov(el, slib) {
+      const p = document.createElement('p');
+      el.appendChild(p);
+      zprava(p, '✏️ Zapisuju…', 'nacitani');
+      el.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+      return slib
+        .then(function () { return nactiData(); })
+        .then(function () { vykresliMesic(); })
+        .catch(function (chyba) {
+          zprava(p, '❌ Nepovedlo se: ' + chyba.message, 'chyba');
+          el.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+        });
+    }
+
+    // Panel pro opravu řádku: změnit gramy nebo smazat
+    function otevriUpravu(li, r) {
+      // Jen jeden panel najednou: když už je otevřený pod tímhle řádkem, zavřeme ho
+      const stary = document.querySelector('.seznam li.uprava');
+      const bylTady = stary && stary.previousSibling === li;
+      if (stary) stary.remove();
+      if (bylTady) return;
+
+      const panel = document.createElement('li');
+      panel.className = 'uprava';
+      panel.innerHTML =
+        '<div class="radek">' +
+          '<input type="text" inputmode="numeric" value="' + r['gramy'] + '"> <span>g</span>' +
+          '<button class="tlacitko ulozit">uložit</button>' +
+          '<button class="tlacitko smazat">🗑 smazat</button>' +
+        '</div>' +
+        '<p class="vzkaz-upravy"></p>';
+      li.after(panel);
+      const vzkaz = panel.querySelector('.vzkaz-upravy');
+
+      panel.querySelector('.ulozit').addEventListener('click', function () {
+        const nove = parseInt(panel.querySelector('input').value, 10);
+        if (!(nove >= 1 && nove <= 100)) { zprava(vzkaz, '❌ Gramy musí být mezi 1 a 100.', 'chyba'); return; }
+        provedAObnov(vzkaz.parentNode, posli({ akce: 'uprav', list: 'Záznamy', cislo: r['číslo'], sloupec: 'gramy', hodnota: nove }));
+      });
+      panel.querySelector('.smazat').addEventListener('click', function () {
+        // Mazání chce potvrzení. Doopravdy se nic nemaže, záznam jen dostane „smazáno = ano“.
+        if (!confirm('Opravdu smazat kafe ' + r['kdo'] + ' ' + r['gramy'] + ' g?')) return;
+        provedAObnov(vzkaz.parentNode, posli({ akce: 'uprav', list: 'Záznamy', cislo: r['číslo'], sloupec: 'smazáno', hodnota: 'ano' }));
+      });
+    }
+
+    // Na kalendář zrníčka napíšeme dnešní den a měsíc
+    function nastavKalendar() {
+      const dnes = new Date();
+      document.getElementById('kal-den').textContent = dnes.getDate();
+      document.getElementById('kal-mesic').textContent = NAZVY_MESICU[dnes.getMonth()].toUpperCase();
+    }
+
+    // Otevře Měsíc: ukáže „nosím data“, načte Tabulku a překreslí
+    function otevriMesic() {
+      nastavKalendar();
+      ukaz('obrazovka-mesic');
+      const nacitani = document.getElementById('mesic-nacitani');
+      const obsah = document.getElementById('mesic-obsah');
+      zprava(nacitani, '☕ Nosím data z Tabulky…', 'nacitani');
+      nacitani.style.display = '';
+      obsah.style.display = 'none';
+      nactiData()
+        .then(function () {
+          vykresliMesic();
+          nacitani.style.display = 'none';
+          obsah.style.display = '';
+        })
+        .catch(function (chyba) { zprava(nacitani, '❌ Data se nepodařilo načíst: ' + chyba.message, 'chyba'); });
+    }
+
+    document.getElementById('tl-mesic').addEventListener('click', function () {
+      vybranyRok = new Date().getFullYear();
+      vybranyMesic = new Date().getMonth();
+      otevriMesic();
+    });
+    // Šipky: o měsíc zpět / dopředu (data už máme, stačí překreslit)
+    document.getElementById('tl-predchozi').addEventListener('click', function () {
+      vybranyMesic = vybranyMesic - 1;
+      if (vybranyMesic < 0) { vybranyMesic = 11; vybranyRok = vybranyRok - 1; }
+      if (data) vykresliMesic();
+    });
+    document.getElementById('tl-dalsi').addEventListener('click', function () {
+      vybranyMesic = vybranyMesic + 1;
+      if (vybranyMesic > 11) { vybranyMesic = 0; vybranyRok = vybranyRok + 1; }
+      if (data) vykresliMesic();
+    });
+
+    // ---------------- Ceník (jen rodiče) ----------------
+
+    // Cena služby platná dnes: řádek s nejnovějším „platí od“, který není v budoucnu
+    function dnesniCenaSluzby() {
+      const ted = new Date();
+      let nejlepsi = null;
+      data.cenik.forEach(function (r) {
+        if (r['smazáno'] === 'ano' || new Date(r['platí od']) > ted) return;
+        if (!nejlepsi || new Date(r['platí od']) >= new Date(nejlepsi['platí od'])) nejlepsi = r;
+      });
+      return nejlepsi;
+    }
+    // Poslední (nesmazaný) nákup zrn
+    function posledniNakup() {
+      let posledni = null;
+      data.nakupy.forEach(function (r) {
+        if (r['smazáno'] === 'ano') return;
+        if (!posledni || new Date(r['kdy']) >= new Date(posledni['kdy'])) posledni = r;
+      });
+      return posledni;
+    }
+
+    function vykresliCenik() {
+      const cena = dnesniCenaSluzby();
+      document.getElementById('sluzba-cena').textContent = cena ? kcZaGram(cena['cena za g']) : '–';
+      const nakup = posledniNakup();
+      if (nakup) {
+        // Cena zrn = cena posledního nákupu ÷ gramy
+        document.getElementById('zrna-cena').textContent = kcZaGram(Number(nakup['cena']) / Number(nakup['gramy']));
+        document.getElementById('zrna-pozn').textContent = 'Z posledního nákupu ' + datumText(new Date(nakup['kdy'])) +
+          ': ' + nakup['gramy'] + ' g za ' + kc(nakup['cena']);
+      } else {
+        document.getElementById('zrna-cena').textContent = '–';
+        document.getElementById('zrna-pozn').textContent = 'Zatím není zapsaný žádný nákup zrn.';
+      }
+      document.getElementById('sluzba-zobrazeni').style.display = '';
+      document.getElementById('sluzba-uprava').style.display = 'none';
+      zprava(document.getElementById('sluzba-pozn'), 'Nová cena platí od dneška. Starší kafe se nepřepočítají.');
+    }
+
+    document.getElementById('tl-cenik').addEventListener('click', function () {
+      ukaz('obrazovka-cenik');
+      const nacitani = document.getElementById('cenik-nacitani');
+      zprava(nacitani, '☕ Nosím data z Tabulky…', 'nacitani');
+      nacitani.style.display = '';
+      nactiData()
+        .then(function () { vykresliCenik(); nacitani.style.display = 'none'; })
+        .catch(function (chyba) { zprava(nacitani, '❌ Data se nepodařilo načíst: ' + chyba.message, 'chyba'); });
+    });
+    // „změnit“ schová cenu a ukáže políčko
+    document.getElementById('tl-zmenit').addEventListener('click', function () {
+      const cena = data && dnesniCenaSluzby();
+      document.getElementById('sluzba-input').value = cena ? String(cena['cena za g']).replace('.', ',') : '';
+      document.getElementById('sluzba-zobrazeni').style.display = 'none';
+      document.getElementById('sluzba-uprava').style.display = '';
+    });
+    document.getElementById('tl-ulozit').addEventListener('click', function () {
+      const nova = cislo('sluzba-input');
+      const pozn = document.getElementById('sluzba-pozn');
+      const tlacitko = document.getElementById('tl-ulozit');
+      if (!(nova > 0)) { zprava(pozn, '❌ Není uloženo! Napiš cenu, třeba 1,50.', 'chyba'); return; }
+      tlacitko.disabled = true;
+      zprava(pozn, '✏️ Ukládám…', 'nacitani');
+      posli({ akce: 'cena', cena: nova })
+        .then(function () { return nactiData(); })
+        .then(function () { vykresliCenik(); })
+        .catch(function (chyba) { zprava(pozn, '❌ Není uloženo! ' + chyba.message, 'chyba'); })
+        .finally(function () { tlacitko.disabled = false; });
+    });
+
+    // ---------------- Start appky ----------------
+    // Když si zařízení pamatuje, kdo jsi, rovnou tě pustíme dál.
+    try {
+      const zapamatovany = localStorage.getItem('coffee-kdo');
+      if (zapamatovany) prihlas(zapamatovany);
+    } catch (e) {}
+  </script>
+</body>
+</html>
