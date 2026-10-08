@@ -243,6 +243,10 @@
 
     /* Obrazovka Měsíc */
     .tlacitko.mensi { width: 100%; font-size: 1.9rem; min-height: 70px; margin-bottom: 14px; --barva: var(--smetana); transform: rotate(0.5deg); }
+    /* Řádek s méně častými tlačítky: menší, světlejší (jen papír) a vedle sebe */
+    .vedlejsi { display: flex; gap: 12px; width: 100%; margin-top: 6px; }
+    .vedlejsi .tlacitko.mensi { flex: 1; min-width: 0; font-size: 1.5rem; min-height: 58px; padding: 8px 6px; margin-bottom: 0; --barva: var(--papir); }
+    .vedlejsi .tlacitko.mensi:nth-child(odd) { transform: rotate(-0.6deg); }
     .castka-ramecek {
       position: relative; width: 100%; text-align: center; padding: 14px 10px; margin-bottom: 14px;
     }
@@ -508,14 +512,17 @@
     <h2 id="pozdrav">Ahoj!</h2>
     <!-- Tlačítka pro kluky -->
     <button class="tlacitko velke kluk" id="tl-uvaril">☕ Uvařil jsem kafe</button>
-    <button class="tlacitko velke kluk" id="tl-zrna">🫘 Koupili jsme zrna</button>
     <!-- Tlačítko pro rodiče (text se mění: táta „Udělal jsem si…“, máma „Udělala jsem si…“) -->
     <button class="tlacitko velke rodic" id="tl-sam">☕ Udělal jsem si kafe sám</button>
     <p class="vzkaz" id="vzkaz-hlavni"></p>
-    <!-- Ceník vidí jen rodiče -->
-    <button class="tlacitko mensi rodic" id="tl-cenik">💰 Ceník</button>
-    <!-- Měsíc vidí všichni -->
-    <button class="tlacitko mensi" id="tl-mesic">📅 Měsíc</button>
+    <!-- Méně častá tlačítka: menší, vedle sebe v jednom řádku -->
+    <div class="vedlejsi">
+      <!-- Zrna vidí jen kluci, Ceník jen rodiče -->
+      <button class="tlacitko mensi kluk" id="tl-zrna">🫘 Zrna</button>
+      <button class="tlacitko mensi rodic" id="tl-cenik">💰 Ceník</button>
+      <!-- Měsíc vidí všichni -->
+      <button class="tlacitko mensi" id="tl-mesic">📅 Měsíc</button>
+    </div>
     <button class="odkaz" id="tl-nejsem">nejsem to já</button>
   </section>
 
